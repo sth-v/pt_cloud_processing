@@ -1,6 +1,1 @@
-{
-    "path":"D:/testptcld/",
-    "sync_ply":"sync.ply",
-    "e57item":"atom-005.e57",
-    "e57iter":["atom-005.e57", "atom-006.e57"]
-}
+{"path": "C:/Users/user/pt_cloud_data/", "sync_ply": "sync.ply", "e57item": ["C:/Users/user/pt_cloud_data/atom- 005.e57"], "e57iter": ["C:/Users/user/pt_cloud_data/atom- 001.e57", "C:/Users/user/pt_cloud_data/atom- 006.e57", "C:/Users/user/pt_cloud_data/atom- 011.e57", "C:/Users/user/pt_cloud_data/atom- 016.e57", "C:/Users/user/pt_cloud_data/atom- 021.e57", "C:/Users/user/pt_cloud_data/atom- 026.e57", "C:/Users/user/pt_cloud_data/atom- 031.e57", "C:/Users/user/pt_cloud_data/atom- 036.e57", "C:/Users/user/pt_cloud_data/atom- 041.e57", "C:/Users/user/pt_cloud_data/atom- 046.e57", "C:/Users/user/pt_cloud_data/atom- 051.e57", "C:/Users/user/pt_cloud_data/atom- 056.e57", "C:/Users/user/pt_cloud_data/atom- 061.e57", "C:/Users/user/pt_cloud_data/atom- 066.e57", "C:/Users/user/pt_cloud_data/atom- 071.e57"]}
