@@ -69,8 +69,8 @@ if __name__ == "__main__":
         colors = np.concatenate(colors, axis=0)
         colors_ = np.concatenate(colors_, axis=0)
         print('write planes...')
-        write_result(f'{root}{id}planes_colors.ply', planes, colors)
-        write_result(f'{root}{id}planes_colors.ply', planes, colors_)
+        write_result(f'{root}{id}planes_colors_a.ply', planes, colors)
+        write_result(f'{root}{id}planes_colors_b.ply', planes, colors_)
    
     # points = read_ply_point(path_ply)
     # pre-processing
