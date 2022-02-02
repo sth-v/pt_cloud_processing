@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # pre-processing
     pcd = o3d.geometry.PointCloud()
 
-    points = e57_pre_processing(fnames=e57iter, voxel_size=0.1, nb_neighbors=30, std_ratio=0.5,
+    points = e57_pre_processing(fnames=e57item, voxel_size=0.02, nb_neighbors=50, std_ratio=0.5,
                                 radius=1.0)
     # points = remove_nan(points)
     # points = down_sample(points,voxel_size=0.1)
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # draw_point_cloud(points)
     pcdpt = numpy_to_pcd(points)
     write_pcd_ply(root+'step1poly.ply', pcdpt)
-    results = detect_multi_planes(points, min_ratio=0.25, threshold=0.1, iterations=2000)
+    results = detect_multi_planes(points, min_ratio=0.05, threshold=0.05, iterations=2000)
 
     planes = []
     colors = []
@@ -47,10 +47,12 @@ if __name__ == "__main__":
         color[:, 0] = r
         color[:, 1] = g
         color[:, 2] = b
-
+        index.append(list(_))
         planes.append(plane)
         colors.append(color)
 
+    with open("task.json", "w") as f:
+        json.dump(index, f)
     # ply_mesh_processing(planes, colors)
     # o3d.io.write_point_cloud(f'{root }meshes.ply', pcd)
     # o3d.visualization.draw_geometries(meshlist)
