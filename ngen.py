@@ -22,5 +22,5 @@ print(names)
 task_dict = {"path": path, "sync_ply":sync_ply, "e57item":e57item, "e57iter": names}
 
 
-with open("index.json", "w") as read_file:
+with open(path+"task.json", "w") as read_file:
     json.dump(task_dict, read_file)

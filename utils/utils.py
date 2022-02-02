@@ -1,6 +1,7 @@
 import numpy as np
 import open3d as o3d
 import pye57
+import operator
 
 # imports/exports
 
@@ -49,7 +50,7 @@ def read_e57_multiply(fnames,voxel_size, nb_neighbors, std_ratio):
 
     e57_data = []
     for a in fnames:
-        print(a)
+        
         dt = read_e57_point(a)
         
         points = e57_to_numpy(dt)
@@ -219,12 +220,8 @@ def e57_pre_processing(fnames, voxel_size=0.1, nb_neighbors=20, std_ratio=0.5, r
     Returns:
         [ndarray]
     """
-    
-
-    
 
     points = read_e57_multiply(fnames, voxel_size, nb_neighbors, std_ratio)
-
     points = down_sample(points, voxel_size)
     points = remove_noise(points, nb_neighbors, std_ratio)
     points = estimate_pt_normals(points, radius, max_nn=nb_neighbors)
@@ -340,8 +337,86 @@ def get_clusters(data, labels):
     return [data[np.where(labels == i)] for i in range(np.amax(labels) + 1)]
 
 
+def map_domains(values,s_min,s_max,t_min,t_max):
+    
+    # Remap numbers into new numeric domain
+    mapped = []
+    for v in values:
+        if s_max-s_min > 0:
+            rv = ((v-s_min)/(s_max-s_min))*(t_max-t_min)+t_min
+        else:
+            rv = (t_min+t_max)/2
+        mapped.append(rv)
+    return mapped
+
+
+def plane_to_color(plane: list[float],k=0.001):
+    a = abs(plane[0])
+    b = abs(plane[1])
+    c = abs(plane[2])
+    d = abs(plane[3]*k)
+    targeta=(0.0,255.0)
+    tmin, tmax = targeta
+    m = map_domains([a+d, b+d, c+d], 0.0, 2.0, tmin, tmax)
+    mm=[]
+    for j in m:
+        mm.append(int(j))
+    
+    m.clear()
+    print(mm)
+    r = map_domains(mm, tmin, tmax, 0.0, 1.0 )
+    return(r)
+
+def plane_to_color_(plane: list[float],k=0.001):
+    a = plane[0]
+    b = plane[1]
+    c = plane[2]
+    d = plane[3]*k
+    targeta=(0.0,255.0)
+    tmin, tmax = targeta
+    m = map_domains([a+d, b+d, c+d], -1.0, 1.0, tmin, tmax)
+    mm=[]
+    for j in m:
+        mm.append(int(j))
+    
+    m.clear()
+    print(mm)
+    r = map_domains(mm, tmin, tmax, 0.0, 1.0 )
+    return(r)
+
+
+def plane_to_pt(plane: list[float], yz=[(0, 0), (0, 1), (1, 0)]):
+    a = plane[0]
+    b = plane[1] 
+    c = plane[2] 
+    d = plane[3]
+    xyz = []
+    for y, z in yz:
+        x = (-b*y-c*z-d)/a
+        xyz.append([x,y,z])
+    return xyz
+
+
+"""planes = [
+    [-0.7070289212177983, 0.7071846306645917, 5.20901281075438e-05, -284.703928556242],
+    [-0.7060876731841004, 0.7081244180871773, 7.928530409690903e-05, -291.5284804427444], 
+    [-0.0001269305790341364, -0.0005884410391463398, 0.9999998188128695, -138.31457915998368]
+    ]
+
+plane_points=[]
+plane_colors=[]
+for j in planes:
+    plane_points.append(plane_to_pt(j))
+    plane_colors.append(naive_plane_to_color(j))
+
+print(plane_points)
+print(plane_colors)
+"""
+
+
 def get_rh_model():
     pass
+
 
 
 """with o3d.utility.VerbosityContextManager(
