@@ -2,7 +2,7 @@ import numpy as np
 import open3d as o3d
 import pye57
 import operator
-
+from itertools import*
 # imports/exports
 
 
@@ -30,7 +30,7 @@ def read_e57_point(fname):
     Returns:
         [dict]: **kwargs
     """
-    print(fname)
+    print("\033[92mprocessing... \033[0;37;40m {}".format(fname))
     e57 = pye57.E57(fname)
     dt = e57.read_scan(0, ignore_missing_fields=True)
 
@@ -90,7 +90,7 @@ def pcd_to_numpy(pcd):
 
     return np.asarray(pcd.points)
 
-
+	
 def e57_to_numpy(e57_data):
     """read e57 to numpy **kwargs dict
     Args:
@@ -109,7 +109,6 @@ def e57_to_numpy(e57_data):
     points[:, 2] = z
     # print(f'xyz: {points}')
     return points
-
 
 # processsing
 
@@ -203,7 +202,6 @@ def write_result(fname, points, colors):
     pcd.colors = o3d.utility.Vector3dVector(colors)
     write_pcd_ply(fname, pcd)
 
-
 # definition of the main function
 
 def e57_pre_processing(fnames, voxel_size=0.1, nb_neighbors=20, std_ratio=0.5, radius=0.1):
@@ -228,48 +226,45 @@ def e57_pre_processing(fnames, voxel_size=0.1, nb_neighbors=20, std_ratio=0.5, r
     return points
 
 
-def ply_mesh_processing(planes, colors):
-    meshlist = []
-
-    for i in range(len(planes)):
-        plane = np.array(planes[i])
-        col = colors[i][0]
-        print(plane)
-        pcd = numpy_to_pcd(plane)
-        # points = down_sample(points,voxel_size=0.1)
-        # points = remove_noise(points, nb_neighbors=50, std_ratio=0.5)
-        # points = estimate_pt_normals(points)
-        dpcd = pcd.voxel_down_sample(voxel_size=0.1)
-        dpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(0.5, 10))
-        radii = [0.1, 0.2, 0.4, 0.5]
-        rec_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(dpcd, o3d.utility.DoubleVector(radii))
-        
-        rec_mesh.paint_uniform_color(col)
-        meshlist.append(rec_mesh)
-
-    return meshlist
+def meshing_analys(pcd, k=3):
+    distances = pcd.compute_nearest_neighbor_distance()
+    avg_dist = np.mean(distances)
+    radius = k * avg_dist
+    return radius
 
 
-def ply_f_mesh_processing(planes, colors):
-    meshlist = []
+def mesh_clean(mesh, quadric_decimation=100000):
+    dec_mesh = mesh.simplify_quadric_decimation(100000)
+    dec_mesh.remove_degenerate_triangles()
+    dec_mesh.remove_duplicated_triangles()
+    dec_mesh.remove_duplicated_vertices()
+    dec_mesh.remove_non_manifold_edges()
+    return dec_mesh
 
-    for i in range(len(planes)):
-        plane = np.array(planes[i])
-        col = colors[i][0]
-        print(plane)
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(plane)
-        
-        # points = down_sample(points,voxel_size=0.1)
-        # points = remove_noise(points, nb_neighbors=50, std_ratio=0.5)
-        # points = estimate_pt_normals(points)
-        #dpcd = pcd.voxel_down_sample(voxel_size=0.1)
-        pcd.estimate_normals(search_param = o3d.geometry.KDTreeSearchParamHybrid(1.0, 9))
 
-        #pcd.normals = o3d.utility.Vector3dVector(pcd_to_numpy(dpcd))
-        rec_mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=4)
-        rec_mesh.paint_uniform_color(col)
-        meshlist.append(rec_mesh)
+def ply_mesh_processing(pcd, radii, color, r, nn, voxel_size=0.1):
+    
+
+    #dpcd = pcd.voxel_down_sample(voxel_size)
+    #dpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(r, nn))
+    rec_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(pcd, o3d.utility.DoubleVector([radii, 0.6]))    
+    rec_mesh.paint_uniform_color(color)
+    
+    return rec_mesh
+
+
+def ply_f_mesh_processing(pcd, radii, color, r, nn, voxel_size=0.1, depth=6):
+    
+
+    #dpcd = pcd.voxel_down_sample(voxel_size)
+    #dpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(r, nn))
+
+    rec_mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth, width=0, scale=1, linear_fit=False)
+    rec_mesh.paint_uniform_color(color)
+    bbox = pcd.get_axis_aligned_bounding_box()
+    p_mesh_crop = rec_mesh.crop(bbox)
+    return p_mesh_crop
+    
 
     
     return meshlist
@@ -300,6 +295,8 @@ def detect_multi_planes(points, min_ratio=0.05, threshold=0.01, iterations=1000)
         target = np.delete(target, index, axis=0)
 
     return plane_list
+
+
 def alpf_mesh_proc(planes, colors):
     meshlist = []
 
@@ -363,26 +360,39 @@ def plane_to_color(plane: list[float],k=0.001):
         mm.append(int(j))
     
     m.clear()
-    print(mm)
+    #print(mm)
     r = map_domains(mm, tmin, tmax, 0.0, 1.0 )
-    return(r)
+    return(mm)
+
 
 def plane_to_color_(plane: list[float],k=0.001):
     a = plane[0]
     b = plane[1]
     c = plane[2]
     d = plane[3]*k
-    targeta=(0.0,255.0)
+    targeta=(0.0,254.0)
     tmin, tmax = targeta
     m = map_domains([a+d, b+d, c+d], -1.0, 1.0, tmin, tmax)
+
+    sma=m[0]+m[1]+m[2]
+    smb=(254-m[0])+(254-m[1])+(254-m[2])
+
+    if sma>smb:
+        m=[m[0],m[1],254-m[2]]
+    if smb>sma:
+        m=[254-m[0],254-m[1],254-m[2]]
+    if sma==smb:
+        m=[m[0],m[1],m[2]]
+
     mm=[]
     for j in m:
+
         mm.append(int(j))
     
     m.clear()
-    print(mm)
+    #print(mm)
     r = map_domains(mm, tmin, tmax, 0.0, 1.0 )
-    return(r)
+    return(mm)
 
 
 def plane_to_pt(plane: list[float], yz=[(0, 0), (0, 1), (1, 0)]):
@@ -397,27 +407,94 @@ def plane_to_pt(plane: list[float], yz=[(0, 0), (0, 1), (1, 0)]):
     return xyz
 
 
+def plane_to_pt_multy(plane: list[float]):
+ 
+    a = plane[0]
+    b = plane[1] 
+    c = plane[2] 
+    d = plane[3]
+    xyz = []
+
+    x = (-b*1-c*0-d)/a
+    y = (-a*0-c*1-d)/b
+    z = (-a*1-b*0-d)/c
+    xyz = [(x,1,0),(0,y,1),(1,0,z)]
+    return xyz
+
+
+def mns(a, b, k=1.1):
+    l = list(zip(a, b))
+    sl = list(starmap(lambda x, y: x - y, l))
+    v = abs(sl[0]) < k and abs(sl[1]) < k and abs(sl[2]) < k
+
+    return v
+
+
+def match_planes(pts):
+
+    p = [pts[0]]
+    indxs = [p.index(pts[0])]
+
+    ptsq = pts[1:]
+
+    while True:
+        
+        if len(ptsq) == 0:
+            break
+        pp = ptsq[0]
+
+        p.reverse()
+        for i in p:
+
+            #print("\033[0, 37m{} {}\033".format(pp, i))
+
+            if i == pts[0]:
+                p.append(pp)
+
+            if mns(pp, i):
+
+                pii = p.index(i)
+                indxs.append(pii)
+                print("\033[1;35;40mMatch(\033[0;37;40m{}&{}\033[1;35;40m)\033".format(pp, i))
+                print(":{}\033[1;35;40m{}\033".format(i, pii))
+                break
+        p.reverse()
+
+        ptsq = ptsq[1:]
+    set_indx = set([a for a in indxs])
+    set_indx.__len__()
+    li = [a for a in set_indx]
+    li.sort()
+    rli = range(set_indx.__len__())
+    
+    dli = dict(zip(li,rli))
+    icc=[]
+    for i in indxs:
+        icc.append(dli[i])
+    
+    return icc
+
+
 """planes = [
-    [-0.7070289212177983, 0.7071846306645917, 5.20901281075438e-05, -284.703928556242],
-    [-0.7060876731841004, 0.7081244180871773, 7.928530409690903e-05, -291.5284804427444], 
-    [-0.0001269305790341364, -0.0005884410391463398, 0.9999998188128695, -138.31457915998368]
-    ]
+    [-0.7070897228208075, 0.7071237039189138, 0.00043730674572993943, -290.92373799967623],
+    [0.7073591552420904, -0.7068542257852676, -0.00035914440886667054, 284.52671035465465],
+    [0.7091583588299021, 0.7049927065615538, -0.008927810296750669, -495.7036010715342]]
 
 plane_points=[]
 plane_colors=[]
 for j in planes:
     plane_points.append(plane_to_pt(j))
-    plane_colors.append(naive_plane_to_color(j))
+    plane_colors.append(plane_to_color_(j))
 
 print(plane_points)
 print(plane_colors)
-"""
+
 
 
 def get_rh_model():
     pass
 
-
+"""
 
 """with o3d.utility.VerbosityContextManager(
             o3d.utility.VerbosityLevel.Debug) as cm:

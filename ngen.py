@@ -3,7 +3,7 @@ import itertools
 
 path = "C:/Users/user/pt_cloud_data/"
 sync_ply = "sync.ply"
-e57item =[path+ "atom- 005.e57", path+ "atom- 008.e57"]
+e57item =[path+ "atom- 005.e57", path+ "atom- 008.e57", path+ "atom- 009.e57", path+ "atom- 003.e57", path+ "atom- 004.e57"]
 
 names = []
 for i in range(1, 75):
